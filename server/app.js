@@ -1,67 +1,93 @@
 const express = require("express");
+const app = express();
+const http = require("http");
+const { Server } = require("socket.io")
 const cors = require('cors');
-const readline = require('readline');
+app.use(cors());
 
+const readline = require('readline');
 const cl = readline.createInterface( process.stdin, process.stdout );
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+//url of frontend
+const URL = 'http://localhost:3000';
 
-const ROUTE_ALTITUDE = '/Altitude';
-const ROUTE_HIS = '/His';
-const ROUTE_ADI = '/Adi';
-const PORT = 2000;
+// backend port
+const PORT = 3001;
 
+// data
 let altitude = 0;  // 0 - 3000
 let his      = 0;  // 0 - 360
 let adi      = 0;  // -100 - 100
 
+// server
+const server = http.createServer(app);
 
-app.listen(PORT);
-console.log('app running... ' + PORT)
+//filter connection
+const io = new Server(server, {
+  cors:{
+    origin: URL,
+    methods: ["GET", "POST"],
+  },
+});
+
+// list of all client that connected
+let all_sockets = [];
+
+// when client connecting
+io.on("connection", (socket) => {
+  socket.emit("send_alt", altitude);
+  socket.emit("send_his", his);
+  socket.emit("send_adi", adi);
+  all_sockets.push(socket);
+
+  //when client disconnecting
+  socket.on("disconnect", () => {
+    let index = all_sockets.indexOf(socket);
+    all_sockets.splice(index, 1);
+  })
+});
 
 /**
- * open the option to make post request.
+ * after the server up let user play in the console...
  */
-const send_all = async () => {
+const interact_user = () => 
+{
+  console.log("server start...");
+  /**
+  * open the option to make post request.
+  */
+  const send_all = async () => {
     if(altitude < 0 || altitude > 3000)
       altitude = 0;
-    app.post(ROUTE_ALTITUDE, (req,res) => {
-      res.json(altitude);
-    });
-    
 
     if(his < 0 || his > 360)
       his = 0;
-      app.post(ROUTE_HIS, (req,res) => {
-        res.json(his);
-      });
 
     if(adi < -100 || adi > 100)
       adi = 0;
-      app.post(ROUTE_ADI, (req,res) => {
-        res.json(adi);
-      });
-};
+    all_sockets.forEach(socket => {
+      socket.emit("send_alt", altitude);
+      socket.emit("send_his", his);
+      socket.emit("send_adi", adi);
+    });
+  };
 
-/**
+ /**
  * 
  * @param {string} q - question to the user.
  */
-
-const question = (q) => {
-  return new Promise( (res, rej) => {
+  const question = (q) => {
+    return new Promise( (res, rej) => {
       cl.question( q, answer => {
           res(answer);
       })
-  });
-};
+    });
+  };
 
-/**
- * get input untill ctrl + C.
- */
-const run = async () => {
+  /**
+  * get input untill ctrl + C.
+  */
+  const run = async () => {
     while ( true ) 
     {
       console.log('');
@@ -77,4 +103,8 @@ const run = async () => {
     }
   };
 
-run();
+  run();
+};
+
+// start server
+server.listen(PORT, interact_user);

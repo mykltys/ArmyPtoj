@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { ButtonGroup, Button } from "rsuite";
-import axios from 'axios';
-
+import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client';
 import './App.css';
-import "rsuite/dist/rsuite.min.css";
+import MyHeader from './Componnents/MyHeader';
+import MyTextComponnents from './Componnents/MainTextComponnents'
+import MyVisualComponnents from './Componnents/MainVisualComponnents';
+import MyButtons from './Componnents/MyButtons';
+
 
 //url of backend
-const URL = 'http://localhost:2000/';
+const URL = 'http://localhost:3001';
 
-const ROUTE_ALTITUDE = 'Altitude';
-const ROUTE_HIS = 'His';
-const ROUTE_ADI = 'Adi';
+// make connection to backend
+const socket = io.connect(URL);
 
 /**
  * Home page
  */
 const Home = () => {
+  //data
   const [altitude, setAltitude] = useState(0)
   const [his     , setHis]      = useState(0);
   const [adi     , setAdi]      = useState(0);
@@ -23,29 +25,19 @@ const Home = () => {
 
 
   /**
-   * make all post request to backend.
+   * set the new data that the server set.
    */
-  const getData = async () => {
-       await axios.post(URL + ROUTE_ALTITUDE)
-      .then((response) => {
-        console.log(response.status, response.data.token);
-        setAltitude(response.data);
-      }).catch(() => {});
-      
-      await axios.post(URL + ROUTE_HIS)
-      .then((response) => {
-        console.log(response.status, response.data.token);
-        setHis(response.data);
-      }).catch(() => {});
-      
-      await axios.post(URL + ROUTE_ADI)
-      .then((response) => {
-        console.log(response.status, response.data.token);
-        setAdi(response.data);
-      }).catch(() => {});
-  }
-
-  getData();
+  useEffect(() => {
+    socket.on("send_alt", altitude => {
+      setAltitude(altitude);
+    });
+    socket.on("send_his", his => {
+      setHis(his);
+    });
+    socket.on("send_adi", adi => {
+      setAdi(adi);
+    });
+  }, [socket]);
   
   /**
    * make the page as text.
@@ -65,46 +57,19 @@ const Home = () => {
     <div className="App">
       {isText ? (
         <div className="App">
-          <header className='App-header'>
-            <h2 className='App-title'>Welcome to Text Flight Simulation</h2>
-          </header>
-          <ButtonGroup style={{ margin: "20px" }} vertical>
-            <Button    style={{ margin: "10px" }} onClick={textClick}  > Text   </Button>
-            <Button    style={{ margin: "10px" }} onClick={visualClick}> Visual </Button>
-          </ButtonGroup>
-          <div
-            style={{
-              display       : 'flex',
-              textAlign     : "center",
-              justifyContent: 'center',
-            }}
-          > 
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> Altitude: {altitude}</p>
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> His     : {his}     </p>
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> Adi     : {adi}     </p>
-          </div>
+          <MyHeader text='Welcome to Text Flight Simulation'/>
+
+          <MyButtons onTextClick={textClick} onVisualClick={visualClick}/>
+          
+          <MyTextComponnents altitude={altitude} his={his} adi={adi}/>
         </div>
       ) : (
         <div className="App">
-          <header className='App-header'>
-            <h2 className='App-title'>Welcome to Visual Flight Simulation</h2>
-          </header>
-          <ButtonGroup style={{ margin: "20px" }} vertical>
-            <Button    style={{ margin: "10px" }} onClick={textClick}  > Text </Button>
-            <Button    style={{ margin: "10px" }} onClick={visualClick}> Visual </Button>
-          </ButtonGroup>
-          <div
-            style={{
-                display       : 'flex',
-                textAlign     : "center",
-                justifyContent: 'center',
-              }
-            }
-          >
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> Altitude: {altitude}</p>
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> His     : {his}     </p>
-            <p style={{margin:50}} onChange={(e) => {setAltitude(e.target.value)}}> Adi     : {adi}     </p>
-          </div>
+          <MyHeader text='Welcome to Visual Flight Simulation'/>
+
+          <MyButtons onTextClick={textClick} onVisualClick={visualClick}/>
+          
+          <MyVisualComponnents />
         </div>
       )};
     </div>
